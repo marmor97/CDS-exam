@@ -25,7 +25,7 @@ In order to run the script, clone this git repository by opening your terminal a
 
 When you have changed directory, please excecute the following code in your terminal 
 
-```git clone https://github.com/marmor97/CDS-exam/edit/main``` 
+```git clone https://github.com/marmor97/CDS-exam``` 
 
 Now open your RStuido and start to source the file that contains packages and necessary functions
  
