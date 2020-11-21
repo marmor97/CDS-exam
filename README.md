@@ -13,7 +13,7 @@ R: https://cran.r-project.org/mirrors.html
 
 RStudio: https://rstudio.com/products/rstudio/download/
 
-Link to Python3: https://www.python.org/downloads/ 
+Python3: https://www.python.org/downloads/ 
 
 ### File description
 This repository is organized as follows: in the folder 'scripts' you will find the primary script that cofigures scraping, data transformation, lemmatization and data visualization in one. The folder 'functions' contains an r file with all necessary packages and functions that are 'sourced' in the above-mentioned script. The folder 'figures' is where the rendered html file of the script and other figures produced through the script are saved. Below, we have provided a guide that takes you through the script.
