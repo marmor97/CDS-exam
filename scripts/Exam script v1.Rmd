@@ -1,0 +1,128 @@
+---
+title: "Cultural Data Science exam script"
+author: "Frida Hæstrup and Marie Mortensen"
+date: "11/21/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Packages and functions
+```{r library}
+source("../functions/functions_packages.R")
+```
+
+
+# Bills
+### Scraping
+### Data transformation
+### Lemmatization
+### Keyword search 
+
+
+# Citizen Proposals
+
+### Scraping
+Firstly, the function scraping from websites with infinite scroll is applied
+```{r scrape}
+citizen <- infinite_scrape(url = "https://www.borgerforslag.dk/api/proposals/search", n_pages = 200)
+```
+
+### Data transformation
+Afterwards, date format is changed
+```{r transformation}
+#the dates are currently in danish and are not following any general formats which will be changed now.
+date_list <- stringr::str_match(citizen$date, "([0-9]{2}). ([a-z]*) ([0-9]{4})")[,2:4] #this uses the stringr package to make three word groups from the column containing the date. We need these groups in order to change the month name to numeric  
+
+#below is a  data frame that will be used to match the month name in the original date column with a numeric replacement
+month_match <- data.frame( 
+  month_no = c(seq(01, 12, 01)),
+  month_name = c("januar",
+                 "februar",
+                 "marts",
+                 "april",
+                 "maj",
+                 "juni",
+                 "juli",
+                 "august",
+                 "september",
+                 "oktober",
+                 "november",
+                 "december"),
+  month_name_us = c("january", #adding translated month names in case it will be necessary to have a column with them
+                    "february",
+                    "march",
+                    "april",
+                    "may",
+                    "june",
+                    "july",
+                    "august",
+                    "september",
+                    "october",
+                    "november",
+                    "december")
+  ) %>% mutate(month_name = as.character(month_name),
+               month_name_us =  as.character(month_name_us))
+
+#this takes the list to transform and changes the names from month names to month number by matching them in the data frame that has the names and corresponding number
+date_list[,2] <- plyr::mapvalues(date_list[,2],
+                                 from =month_match$month_name,
+                                 to = month_match$month_no)
+
+#next, they are combined together using paste() that separates them with a -
+date_list_new <- paste(date_list[,3], date_list[,2], date_list[,1], sep = "-")
+
+citizen <- citizen %>% #lastly they are added to the data frame containing the other information
+  mutate(date = as.Date.character(as.character(date_list_new)), #changing to date format
+  month = plyr::mapvalues(date_list[,2],
+                          from = month_match$month_no,
+                          to = month_match$month_name_us)) %>%
+  mutate(year = date_list[,3]) %>%
+  #mutate(year = str_extract_all(date, "[0-9]{4}")) %>%
+  unite("month_year", month:year, sep = " ", remove = F)
+
+citizen$government <- ifelse(citizen$date>"2019-06-05", "Frederiksen", "Rasmussen") 
+
+rasmussen <- citizen %>% subset(government=="Rasmussen")
+
+frederiksen <- citizen %>% subset(government=="Frederiksen")
+```
+
+### Separating each government
+```{r}
+
+```
+
+### Lemmatizing words
+Below the original titles are transformed to their lemmas 
+```{r lemmatization}
+lemma_words <- read.csv("../borgerforslag_lemmatized.csv")
+```
+
+### Extracting proportion of titles containing keywords
+```{r keyword}
+keyword_list <- c("skat", "kontanthjælp", "udlænding", "invandr", "politi", "sundhed", "erhverv")
+topic_proportion <- keyword_search(lemma_words$title_dup, keyword_list)
+```
+
+### Making pie charts with highcharts
+```{r pie}
+#setting highcharter options
+options(highcharter.theme = hc_theme_sparkline_vb(tooltip = list(valueDecimals = 3)))
+
+#selecting data frame and aesthetics  
+hc_pie <- topic_proportion %>%
+  hchart(
+    "pie", hcaes(x = keyword, y = percent),
+    name = "Topic proportion"
+    )
+hc_pie
+```
+
+
+
+
+
