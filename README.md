@@ -1,7 +1,7 @@
 # Political promises
 Exam project for Cultural Data Science 2020
 
-### Contributers
+### Contributors
 Frida Hæstrup and Marie Mortensen
 
 ### Prerequisites
@@ -27,7 +27,7 @@ When you have changed directory, please excecute the following code in your term
 
 ```git clone https://github.com/marmor97/CDS-exam``` 
 
-Now open your RStuido and start to source the file that contains packages and necessary functions
+Now open your RStudio and start to source the file that contains packages and necessary functions
  
  ```r
  source("packages_functions.R")
