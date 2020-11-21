@@ -8,6 +8,7 @@ Frida Hæstrup and Marie Mortensen
 To run the script it is required that R and RStudio is installed as well as Python 3.
 
 Link to softwares and interfaces
+
 R: https://cran.r-project.org/mirrors.html
 
 RStudio: https://rstudio.com/products/rstudio/download/
