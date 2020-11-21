@@ -9,7 +9,9 @@ To run the script it is required that R and RStudio is installed as well as Pyth
 
 Link to softwares and interfaces
 R: https://cran.r-project.org/mirrors.html
+
 RStudio: https://rstudio.com/products/rstudio/download/
+
 Link to Python3: https://www.python.org/downloads/ 
 
 ### File description
@@ -18,7 +20,7 @@ This repository is organized as follows: in the folder 'scripts' you will find t
 ### Usage 
 In order to run the script, clone this git repository by opening your terminal and change your directory to where you would like to have these files. Use cd to change it. An example could be 
 
-```cd path/to/your/repository```.
+```cd path/to/your/repository```
 
 When you have changed directory, please excecute the following code in your terminal 
 
