@@ -83,45 +83,108 @@ citizen <- citizen %>% #lastly they are added to the data frame containing the o
   mutate(year = date_list[,3]) %>%
   #mutate(year = str_extract_all(date, "[0-9]{4}")) %>%
   unite("month_year", month:year, sep = " ", remove = F)
-
-citizen$government <- ifelse(citizen$date>"2019-06-05", "Frederiksen", "Rasmussen") 
-
-rasmussen <- citizen %>% subset(government=="Rasmussen")
-
-frederiksen <- citizen %>% subset(government=="Frederiksen")
 ```
 
 ### Separating each government
 ```{r}
+#rasmussen <- citizen %>% subset(government=="Rasmussen")
 
+#frederiksen <- citizen %>% subset(government=="Frederiksen")
 ```
 
 ### Lemmatizing words
 Below the original titles are transformed to their lemmas 
 ```{r lemmatization}
-lemma_words <- read.csv("../borgerforslag_lemmatized.csv")
+lemma_words <- read.csv("../data/borgerforslag_lemmatized.csv")
+lemma_words$date <- as.Date.character(lemma_words$date)
+lemma_words$pm <- ifelse(lemma_words$date > "2019-06-05", "Frederiksen", "Rasmussen") 
+lemma_gov <- read.csv("../mari.csv")
 ```
 
 ### Extracting proportion of titles containing keywords
 ```{r keyword}
 keyword_list <- c("skat", "kontanthjælp", "udlænding", "invandr", "politi", "sundhed", "erhverv")
-topic_proportion <- keyword_search(lemma_words$title_dup, keyword_list)
+
+ras_citizen <- keyword_search(lemma_words$title_dup[lemma_words$pm == "Rasmussen"], keyword_list)
+fred_citizen <- keyword_search(lemma_words$title_dup[lemma_words$pm == "Frederiksen"], keyword_list)
+  
+ras_bills <- keyword_search(lemma_gov$title[lemma_gov$pm == "Rasmussen"], keyword_list)
+fred_bills <- keyword_search(lemma_gov$title[lemma_gov$pm == "Frederiksen"], keyword_list)
+
 ```
 
 ### Making pie charts with highcharts
 ```{r pie}
-#setting highcharter options
-options(highcharter.theme = hc_theme_sparkline_vb(tooltip = list(valueDecimals = 3)))
+pie_plot <- function(keyword_df, bill_type, government, palette = "Dark2"){
+  plot <- keyword_df %>%
+  ggplot(aes(x="", y=percent, fill=keyword)) + 
+  geom_bar(stat="identity", width=1) + 
+  coord_polar("y", start=0) + # Convert to pie (polar coordinates) and add labels
+  geom_text(aes(label = paste0(round(percent, digits = 2), "%")), 
+            position = position_stack(vjust = 0.7),#vjust = 0.8
+            family = "Times New Roman")  + 
+  scale_fill_brewer(palette = palette) + # Add color scale (hex colors)
+  labs(x = NULL, y = NULL, fill = NULL, title = paste("Keyword percentages", bill_type, "-", government, sep = " "))+ # Remove labels and add title
+  theme_classic() + # Tidy up the theme
+  theme(axis.line = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          plot.title = element_text(hjust = 0.5, size = 12, family = "Times New Roman"))
+  return(plot)
+}
 
-#selecting data frame and aesthetics  
-hc_pie <- topic_proportion %>%
-  hchart(
-    "pie", hcaes(x = keyword, y = percent),
-    name = "Topic proportion"
-    )
-hc_pie
+
+ras_citi_plot <- pie_plot(ras_citizen, "citizen proposals", "Rasmussen", palette = "Paired")
+
+legend <- get_legend(ras_citi_plot)
+ras_citi_plot + theme(legend.position="none")
+
+fred_citi_plot <- pie_plot(fred_citizen, "citizen proposals", "Frederiksen", palette = "Paired")
+fred_citi_plot <- fred_citi_plot + theme(legend.position="none")
+
+ras_bills_plot <- pie_plot(ras_bills, "bills", "Rasmussen", palette = "Paired")
+ras_bills_plot <- ras_bills_plot + theme(legend.position="none")
+
+fred_bills_plot <- pie_plot(fred_bills,"bills", "Rasmussen", palette = "Paired")
+fred_bills_plot <- fred_bills_plot + theme(legend.position="none")
+
+pacman::p_load(gridExtra, cowplot) 
+
+gridExtra::grid.arrange(ras_citi_plot, ras_bills_plot, fred_citi_plot, fred_bills_plot, legend)
+
 ```
 
+plot experiment
+```{r}
+# 1. Create the plots
+#++++++++++++++++++++++++++++++++++
+# Create a box plot with a top legend position
+bp <- ggplot(ras_bills, aes(x="", y=percent, fill=keyword)) +
+  geom_bar(stat="identity", width=1) + 
+  coord_polar("y", start=0) + # Convert to pie (polar coordinates) and add labels
+  theme(legend.position = "top")
+
+# Create a violin plot
+vp <- ggplot(fred_bills, aes(x="",y=percent, fill=keyword)) +
+  geom_bar(stat="identity", width=1) + 
+  coord_polar("y", start=0) + # Convert to pie (polar coordinates) and add labels
+  theme(legend.position="none")
+
+# 2. Save the legend
+#+++++++++++++++++++++++
+legend <- get_legend(bp)
+# 3. Remove the legend from the box plot
+#+++++++++++++++++++++++
+bp <- bp + theme(legend.position="none")
+# 4. Create a blank plot
+blankPlot <- ggplot()+geom_blank(aes(1,1)) + 
+  cowplot::theme_nothing()
+
+
+gridExtra::grid.arrange(bp, vp, legend)
+
+
+```
 
 
 
