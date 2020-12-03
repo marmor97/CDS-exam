@@ -5,15 +5,14 @@ Exam project for Cultural Data Science 2020
 Frida Hæstrup and Marie Mortensen
 
 ### Prerequisites
-To run the script it is required that R and RStudio is installed as well as Python 3.
+To run the script it is required that you have R version 3.6.1, RStudio version 1.3.1093, Python version 3.8 installed.
+Link to softwares and interfaces:
 
-Link to softwares and interfaces
+R: https://cran.r-project.org/bin/macosx/ 
 
-R: https://cran.r-project.org/mirrors.html
+Python: https://www.python.org/downloads/mac-osx/ 
 
 RStudio: https://rstudio.com/products/rstudio/download/
-
-Python3: https://www.python.org/downloads/ 
 
 ### File description
 This repository is organized as follows: in the folder 'scripts' you will find the primary script that cofigures scraping, data transformation, lemmatization and data visualization in one. The folder 'functions' contains an r file with all necessary packages and functions that are 'sourced' in the above-mentioned script. The folder 'figures' is where the rendered html file of the script and other figures produced through the script are saved. Below, we have provided a guide that takes you through the script.
