@@ -34,6 +34,6 @@ Now open your RStudio and start to source the file that contains packages and ne
  
 Afterwards, please run the r 'chunks' below the section and make sure you run all code in one chunk before continuing to the next chunk.
 
-Note that when you reach the chunk where 'reticulate' executes Python code in R, Python version 2.7 or newer and R version 3.0 or newer are required. Please make sure you have these correct versions installed. Follow the guide in the file, *reticulate_guide.md*, above to succesfully set up and use 'retiuclate' within R. 
+Note that when you reach the chunk where 'reticulate' executes Python code in R, Python version 2.7 or newer and R version 3.0 or newer are required. Please make sure you have these correct versions installed. Follow the guide above (*reticulate_guide.md*) to succesfully set up and use 'reticulate' within R. 
 
 
