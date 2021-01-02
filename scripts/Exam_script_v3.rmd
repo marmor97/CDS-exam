@@ -1,0 +1,293 @@
+---
+title: "Cultural Data Science exam script"
+author: "Frida Hæstrup and Marie Mortensen"
+date: "11/21/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Packages and functions
+```{r library}
+source("../functions/functions_packages.R")
+```
+
+
+## Scraping
+### Citizen proposals
+Firstly, citizen proposals are scraped. The function scraping from websites with infinite scroll is applied (see functions_packages.R). This creates a dataframe with all citizen proposals across the two terms
+```{r scrape}
+citizen <- infinite_scrape(url = "https://www.borgerforslag.dk/api/proposals/search", n_pages = 200)
+```
+
+### Bills 
+For bills, we apply a customized function (see functions_packages.R) to scrape relevant columns from the provided url and save it into a dataframe. This is done for both Rasmussen's and Frederiksen's terms respectively
+```{r scrape}
+# Scraping data for Rasmussen's term
+rasmussen <- scraping("rasmussen_p1") #page 1
+rasmussen <- rbind(rasmussen, scraping("rasmussen_p2")) #page 2
+
+# Scraping data for Frederiksen's term
+frederiksen <- scraping("frederiksen_p1") #page 1
+frederiksen <- rbind(frederiksen, scraping("frederiksen_p2")) #page 2
+
+#Now, we combine the two dataframes into one, which will ease the preprocessing steps
+rasmussen <- rasmussen %>% mutate(pm=c("Rasmussen")) #add new column indicating term
+frederiksen <- frederiksen %>% mutate(pm=c("Frederiksen")) #add new column indicating term
+bills <- rbind(rasmussen, frederiksen) #combining dataframes
+```
+
+## Data transformation and preprocessing
+### Citizen proposals
+Afterwards, the date format in citizen proposals is changed. Addtionally, a preprocessing function (see functions_packages.R) is applied to remove punctuation and stopwords and tokenize the text
+```{r transformation}
+#the dates are currently in danish and are not following any general formats which will be changed now.
+date_list <- stringr::str_match(citizen$date, "([0-9]{2}). ([a-z]*) ([0-9]{4})")[,2:4] #this uses the stringr package to make three word groups from the column containing the date. We need these groups in order to change the month name to numeric  
+
+#below is a  data frame that will be used to match the month name in the original date column with a numeric replacement
+month_match <- data.frame( 
+  month_no = c(seq(01, 12, 01)),
+  month_name = c("januar",
+                 "februar",
+                 "marts",
+                 "april",
+                 "maj",
+                 "juni",
+                 "juli",
+                 "august",
+                 "september",
+                 "oktober",
+                 "november",
+                 "december")) %>% 
+    mutate(month_name = as.character(month_name))
+
+
+#this takes the list to transform and changes the names from month names to month number by matching them in the data frame that has the names and corresponding number
+date_list[,2] <- plyr::mapvalues(date_list[,2],
+                                 from = month_match$month_name,
+                                 to = month_match$month_no)
+
+#next, they are combined together using paste() that separates them with a -
+date_list_new <- paste(date_list[,3], date_list[,2], date_list[,1], sep = "-")
+
+citizen <- citizen %>% #lastly they are added to the data frame containing the other information
+  mutate(date = as.Date.character(as.character(date_list_new))) %>%   #changing to date format
+  select(-c(X0, status)) #removing unwanted columns
+
+# Applying preprocessing-function 
+citizen_filtered <- preprocessing(citizen)
+
+# Save tokenized data as csv file to load as pandas dataframe in Python
+write.csv(citizen_filtered, "../citizen_filtered.csv")
+```
+
+### Bills
+For the bills, a preprocessing function (see functions_packages.R) is applied to remove punctuation and stopwords and tokenize the text
+```{r transformation}
+# Applying preprocessing-function 
+bills_filtered <- preprocessing(bills)
+
+# Save tokenized data as csv file to load as pandas dataframe in Python
+write.csv(bills_filtered, "bills_filtered.csv")
+```
+
+
+## Lemmatization
+
+```{python}
+import lemmy as lemmy
+import pandas as pd
+import spacy
+import lemmy.pipe
+import da_core_news_sm as da #da_core_news_sm is the name of our spaCy model 
+nlp = da.load()
+```
+
+### Citizen proposals
+
+If you get this error "ValueError: [E090] Extension 'lemmas' already exists on Token. To overwrite the existing extension, set `force=True` on `Token.set_extension`." Then uncomment the first two lines in the chunk
+```{python}
+#from spacy.tokens import Token
+#Token.remove_extension("lemmas")
+
+# Create an instance of Lemmy's pipeline component for spaCy.
+pipe = lemmy.pipe.load('da')
+
+# Add the component to the spaCy pipeline.
+nlp.add_pipe(pipe, after='tagger')
+
+# Loading data
+borgerforslag = pd.read_csv('../citizen_filtered.csv')
+
+# Loop through all words and return the lemmatized version
+lemma_words = []
+for i in range(0, len(borgerforslag.word)):
+    lemma_words.append(nlp(borgerforslag.word[i])[0]._.lemmas)
+
+# Flattening lemma_words (extracting content of lists in lemma_words-list)
+# while only extracting first suggestions for lemmas for each word
+flat_list = []
+for i in range(0, len(lemma_words)):
+    flat_list.append(lemma_words[i][0])
+
+# Adding list of lemmas to the dataframe
+borgerforslag['lemmas'] = flat_list
+
+# Saving lemmatized words as .csv-file
+borgerforslag.to_csv(r'borgerforslag_lemmatized.csv', index = False)
+```
+
+
+## Lemmatization
+
+```{python}
+import lemmy as lemmy
+import pandas as pd
+import spacy
+import lemmy.pipe
+import da_core_news_sm as da #da_core_news_sm is the name of our spaCy model 
+nlp = da.load()
+```
+
+### Bills
+Again if you get the error "ValueError: [E090] Extension 'lemmas' already exists on Token. To overwrite the existing extension, set `force=True` on `Token.set_extension`." Then uncomment the first two lines in the chunk
+```{python}
+#from spacy.tokens import Token
+#Token.remove_extension("lemmas")
+
+# Create an instance of Lemmy's pipeline component for spaCy.
+pipe = lemmy.pipe.load('da')
+
+# Add the component to the spaCy pipeline.
+nlp.add_pipe(pipe, after='tagger')
+
+
+# Loading data
+py_bills = pd.read_csv('bills_filtered.csv')
+
+# Loop through all words and return the lemmatized version
+lemma_words = []
+for i in range(0, len(py_bills['word'])):
+    lemma_words.append(nlp(py_bills['word'][i])[0]._.lemmas)
+
+# Flattening lemma_words (extracting content of lists in lemma_words-list)
+# while only extracting first suggestions for lemmas for each word
+flat_list = []
+for i in range(0, len(lemma_words)):
+    flat_list.append(lemma_words[i][0])
+
+# Adding list of lemmas to the dataframe
+py_bills['lemmas'] = flat_list
+
+# Saving lemmatized words as .csv-file
+py_bills.to_csv(r'bills_lemmatized.csv', index = False)
+
+```
+
+Loading lemmatized datasets back into R
+```{r}
+# Loading lemmatized data set back into R
+bills_lemmatized <- read.csv("bills_lemmatized.csv") 
+citizen_lemmatized <- read.csv("borgerforslag_lemmatized.csv")
+citizen_lemmatized$date <- as.Date.character(citizen_lemmatized$date) 
+citizen_lemmatized$pm <- ifelse(citizen_lemmatized$date > "2019-06-05", "Frederiksen", "Rasmussen") 
+```
+
+## Data analysis
+
+### Term frequency and tf-idf
+```{r term freq analysis}
+# Now we apply a function to put all the lemmatized words back into sentences to investigate the term frequency (see functions.R)
+lemmatized_titles_all <- lemma_to_sentence(bills_lemmatized)
+
+# Creating a Document-Term Matrix (DTM) representation: columns represent unique words, rows represent each document (here bill), and the entries are the frequency of the term in the document
+library(tm)
+
+# Applying function to create document term matrix (see functions.R)
+dtm <- create_dtm(lemmatized_titles_all)
+
+# Calculating frequency of every word across documents
+freq = data.frame(sort(colSums(as.matrix(dtm)), decreasing=TRUE))
+table_1A <- head(freq, 10)
+
+# Applying function to create DTM where words are weighted according to tf-idf
+dtm_tfidf <- create_dtm_tfidf(lemmatized_titles_all)
+
+# Calculating frequency of every word according to tf-idf
+freq2 = data.frame(sort(colSums(as.matrix(dtm_tfidf)), decreasing=TRUE))
+table_1B <- head(freq2, 10)
+
+# Now, we want to do the same but for subsets of the data representing Rasmussen and Frederiksen respectively
+lemmatized_Rasmussen <- bills_lemmatized %>% filter(pm == "Rasmussen")
+lemmatized_Frederiksen <- bills_lemmatized %>%  filter(pm == "Frederiksen")
+
+# Applying function to turn all the lemmatized words back into sentences (see functions.R)
+lemmatized_titles_Rasmussen <- lemma_to_sentence(lemmatized_Rasmussen)
+lemmatized_titles_Frederiksen <- lemma_to_sentence(lemmatized_Frederiksen)
+
+# Creating DTM where words are weighted according to tf-idf
+dtm_tfidf_Rasmussen <- create_dtm_tfidf(lemmatized_titles_Rasmussen)
+dtm_tfidf_Frederiksen <- create_dtm_tfidf(lemmatized_titles_Frederiksen)
+
+# Calculating frequency of every word according to tf-idf
+freq2_Rasmussen = data.frame(sort(colSums(as.matrix(dtm_tfidf_Rasmussen)), decreasing=TRUE))
+table_2A <- head(freq2_Rasmussen, 20)
+freq2_Frederiksen = data.frame(sort(colSums(as.matrix(dtm_tfidf_Frederiksen)), decreasing=TRUE))
+table_2B <- head(freq2_Frederiksen, 20)
+```
+
+### Keyword search 
+First, we extracting proportion of titles containing keywords in both bills and citizen proposals
+### Bills
+```{r}
+keyword_list <- c("skat", "kontanthjælp", "udlænding", "indvandr", "politi", "sundhed", "erhverv", "klima", "miljø")
+
+#applying keywordsearch only to rasmussen 
+ras_bills <- keyword_search(lemmatized_titles_Rasmussen$titles, keyword_list)
+ras_bills <- ras_bills %>% mutate(pm = "Rasmussen",
+                                 type = "Bills")
+
+#applying keywordsearch only to frederiksen
+fred_bills <- keyword_search(lemmatized_titles_Frederiksen$titles, keyword_list)
+fred_bills <- fred_bills %>% mutate(pm = "Frederiksen",
+                                    type = "Bills")
+```
+
+### Citizen
+```{r keyword}
+##Citizen
+ras_citizen <- keyword_search(citizen_lemmatized$title[citizen_lemmatized$pm == "Rasmussen"], keyword_list)
+ras_citizen <- ras_citizen %>% mutate(pm = "Rasmussen",
+                                     type = "Citizen")
+
+fred_citizen <- keyword_search(citizen_lemmatized$title[citizen_lemmatized$pm == "Frederiksen"], keyword_list)
+fred_citizen <- fred_citizen %>% mutate(pm = "Frederiksen",
+                                        type = "Citizen")
+
+```
+
+### Visualization
+Below is a visualization showing percentage keywords present in each prime ministers term in both bills and citizen proposals. 
+```{r}
+#rbinding all datasets before plotting
+all <- rbind(ras_citizen,fred_citizen,ras_bills,fred_bills)
+
+#plot
+all %>% 
+  ggplot(aes(x = keyword, y = percent, fill = pm)) + 
+  geom_bar(stat = "identity", position = "dodge") + 
+  scale_fill_brewer(palette = "Set1") + 
+  labs(title = "Keywords in bills and citizen proposals", fill = "Prime Minister", x = "Keyword", y = "Percentage") +
+  theme_minimal(base_size = 17, base_family = "Times New Roman") + 
+  facet_wrap(.~type, nrow = 2)
+```
+
+
+
+
+
+
+
