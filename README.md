@@ -29,7 +29,7 @@ When you have changed directory, please excecute the following code in your term
 Now open your RStudio and start to source the file that contains packages and necessary functions
  
  ```r
- source("packages_functions.R")
+ source("functions/functions_packages.R")
  ```
  
 Afterwards, please run the r 'chunks' below the section and make sure you run all code in one chunk before continuing to the next chunk.
